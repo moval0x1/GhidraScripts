@@ -1,11 +1,47 @@
 #Decode strings used in custom sample from Zero2Auto course
 #@author Charles Lomboni
-#@category Zero2Auto
+#@category SecurityJoes
 #@keybinding 
 #@menupath 
 #@toolbar 
 
 import ghidra
+
+# translate string
+from ghidra.program.model.data import StringDataInstance
+from ghidra.program.model.data import TranslationSettingsDefinition
+from ghidra.program.util import DefinedDataIterator
+from util.CollectionUtils import *
+
+# **************************** TRANSLATE STRING ****************************
+
+def customize_str(s):
+    return f"[+] {decode_str(s)}"
+
+def translate_string():
+    if (currentProgram is None):
+        return
+
+    count = 0
+    monitor.initialize(currentProgram.getListing().getNumDefinedData())
+    monitor.setMessage("[+] Deobfuscating strings...")
+
+    data_iterator = DefinedDataIterator.definedStrings(currentProgram, currentSelection)
+    for data in data_iterator:
+
+        if (monitor.isCancelled()):
+            break
+
+        str_instance =  StringDataInstance.getStringDataInstance(data)
+        s = str_instance.getStringValue()
+        if (s):
+            TranslationSettingsDefinition.TRANSLATION.setTranslatedValue(data, customize_str(s))
+            TranslationSettingsDefinition.TRANSLATION.setShowTranslated(data, True)
+            count += 1
+            monitor.incrementProgress(1)
+
+    return count
+
 
 # **************************** GET STRING ****************************
 
@@ -66,16 +102,20 @@ def rename_function(old_name, new_name):
 
 		print (f"[*] Renamed from {old_name} to {new_name}")
 
-# **************************** MAIN ****************************
-def main():
-	"""Main"""
 
-	print ("[*] Deobfuscating strings...")
+# **************************** EOL Comment ****************************
+
+def eol_comment():
+
+	user_rename_function = askString("Rename Function?", "1 = Yes. 2 = No.")
+
 	decrypt_function_old_name = "FUN_00401300"
 	decrypt_function_new_name = "mw_decrypt_str"
 
 	for x in getReferencesTo(toAddr(decrypt_function_old_name)):
-		rename_function(decrypt_function_old_name, decrypt_function_new_name)
+		
+		if "1" in user_rename_function:
+			rename_function(decrypt_function_old_name, decrypt_function_new_name)
 
 		callee = x.getFromAddress()
 		inst = getInstructionAt(callee)
@@ -85,6 +125,7 @@ def main():
 		if 'MOV ECX' in before.toString():
 			try:
 				set_comment(before, x)
+				
 			except ValueError:
 				pass
 		else:
@@ -95,6 +136,29 @@ def main():
 					set_comment(before_one_more, x)
 				except ValueError:
 					pass
+
+# **************************** MAIN ****************************
+def main():
+	"""Main"""
+
+	# Prompt user to input option
+	user_option = askString("Decode Option", "1 = EOL Comments. 2 = String Representation.")
+
+	if (monitor.isCancelled()):
+		print(f"Operation canceled.")
+		return
+
+	if "1" in user_option:
+		print ("[+] Deobfuscating to EOL comment")
+		eol_comment()
+
+	if "2" in user_option:
+		if currentSelection is None:
+			print(f"You should select the encrypted strings")
+			return
+
+		print ("[+] Deobfuscating to String Representation")
+		translate_string()
 
 	print ("[*] Done.")
 
