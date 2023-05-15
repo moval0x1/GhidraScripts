@@ -1,2 +1,2 @@
-# Zero 2 Auto
-Scripts used to solve the custom sample from Zero2Auto course.
+# Ghidra Scripts/Sniptes
+Some Ghidra scripts created for my daily tasks/studies
